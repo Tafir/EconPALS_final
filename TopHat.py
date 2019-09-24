@@ -1,10 +1,10 @@
 import pandas as pd
+import sys
 import numpy as np
 
 
 def rename_sessions(df, rename=False):
     """
-
     :param df: a data frame containing the exported data from TopHat
     :param rename: boolean is true for when the function is called after original importing, e.g. when a new session is inserted
     :return: returns a df with all the 'lectures' renamed to 'session' with proper week and day labels
@@ -74,7 +74,6 @@ def rename_sessions(df, rename=False):
 
 def drop_leaders_uuns(df, leaders_uuns):  # gets rid of double entries and leaders' emails
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :param leaders_uuns: a list containing leaders' uuns, which are to be excluded from the data frame
     :return: returns a corrected data frame
@@ -107,7 +106,6 @@ def correct_uuns(df):  # appends 'sms.' to UUN emails
 
 def read_file(filename, leaders_uuns=[], columns_to_drop=[]):  # creates a corrected and sorted data frame
     """
-
     :param filename: a string containing the file path to the TopHat export
     :param leaders_uuns: a list containing leaders' uuns, which are to be excluded from the data frame
     :param columns_to_drop: a list of session (lecture) labels which are to be excluded from the data frame
@@ -116,23 +114,22 @@ def read_file(filename, leaders_uuns=[], columns_to_drop=[]):  # creates a corre
 
     df = pd.read_excel(io=filename, sheet_name='Attendance')
 
-    try:
-        df = df.drop(columns=columns_to_drop)
-    except:
-        print("Column drop failed. Ignore if you are importing a formatted file")
+    if columns_to_drop != ['']:  # if there is a column to drop
+        try:
+            df = df.drop(columns=columns_to_drop)
+        except KeyError:
+            print(sys.exc_info()[1])  # outputs which key has not been found
+            print("Column drop failed. Ignore if you are importing a formatted file")
 
-    try:
-        df = drop_leaders_uuns(df, leaders_uuns)
-    except:
-        print("Drop leaders UUNS failed. Ignore if you are importing a formatted file")
+    if leaders_uuns != ['']:  # if the leaders uun field in the settings is not empty
+        try:
+            df = drop_leaders_uuns(df, leaders_uuns)
+        except:
+            print("Drop leaders UUNS failed. Ignore if you are importing a formatted file")
+            print(e=sys.exc_info())
 
     df = df.sort_values(by='Username')
     df = rename_sessions(df)
-
-    try:
-        df = merge_sessions(df, 'Friday 1 s1w10', 'Friday 1 s1w10p2')
-    except:
-        print("Merging fridays failed. Ignore if you are importing a formatted file")
 
     df = correct_uuns(df)
     return df
@@ -140,7 +137,6 @@ def read_file(filename, leaders_uuns=[], columns_to_drop=[]):  # creates a corre
 
 def studypals_read_file(filename, df, leaders_uuns):  # imports a StudyPALS excel file
     """
-
     :param filename: a string containing the file path to the StudyPALS (EconPALS1) TopHat export
     :param df: a data frame with the EconPALS TopHat data
     :param leaders_uuns: a list containing leaders' uuns, which are to be excluded from the data frame
@@ -177,7 +173,6 @@ def studypals_read_file(filename, df, leaders_uuns):  # imports a StudyPALS exce
 
 def attendance_check(df, i, week, semester):  # checks whether a person i attended a session in a given week
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :param i: integer, index of a person being looked up
     :param week: integer, week label of the sessions being looked up
@@ -211,7 +206,6 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
 
 def get_emails(df, week=0, semester=1, to_file=False):  # produces a file with a mailing list with every attendee ever
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :param week: integer, week label of the sessions being looked up
     :param semester: integer, semester label of the sessions being looked up
@@ -255,7 +249,6 @@ def get_emails(df, week=0, semester=1, to_file=False):  # produces a file with a
 
 def regulars_list(df, number_of_sessions, to_file=False):
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :param number_of_sessions: integer, a cutoff number of sessions after which a person is considered a regular
     :param to_file: boolean, if True, writes to a file
@@ -280,7 +273,6 @@ def regulars_list(df, number_of_sessions, to_file=False):
 
 def merge_sessions(df, session1, session2):
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :param session1: string, 1st session to be merged, column will be preserved
     :param session2: string, 2nd session to be merged, column will be dropped
@@ -296,7 +288,6 @@ def merge_sessions(df, session1, session2):
 
 def attendance_count(df):
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :return: a list of tuples, first value is session name the second is the session's attendance count
     """
@@ -311,7 +302,6 @@ def attendance_count(df):
 # updates attendance after importing the StudyPALS file
 def update_attendance(df):
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :return: a data frame with the StudyPALS (EconPALS1) attendance properly accounted for
     """
@@ -327,7 +317,6 @@ def update_attendance(df):
 
 def get_attendance(df, email):
     """
-
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
     :param email: string, an email of a person being looked up
     :return: string, a list of all the sessions a person has attended
