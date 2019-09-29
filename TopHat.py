@@ -104,11 +104,12 @@ def correct_uuns(df):  # appends 'sms.' to UUN emails
     return df
 
 
-def read_file(filename, leaders_uuns=[], columns_to_drop=[]):  # creates a corrected and sorted data frame
+def read_file(filename, leaders_uuns=[''], columns_to_drop=[''], columns_to_merge=['']):  # creates a corrected and sorted data frame
     """
     :param filename: a string containing the file path to the TopHat export
     :param leaders_uuns: a list containing leaders' uuns, which are to be excluded from the data frame
     :param columns_to_drop: a list of session (lecture) labels which are to be excluded from the data frame
+    :param columns_to_merge: a list of session (lecture) labels which are to be merged on import
     :return: a data frame of the exported data
     """
 
@@ -120,6 +121,14 @@ def read_file(filename, leaders_uuns=[], columns_to_drop=[]):  # creates a corre
         except KeyError:
             print(sys.exc_info()[1])  # outputs which key has not been found
             print("Column drop failed. Ignore if you are importing a formatted file")
+
+    if columns_to_merge != ['']:
+        try:
+            merge_tuples = [(columns_to_merge[i], columns_to_merge[i+1]) for i in range(0, len(columns_to_merge), 2)]
+            for pair in merge_tuples:
+                df = merge_sessions(df, pair[0], pair[1])
+        except:
+            print(sys.exc_info()[1])
 
     if leaders_uuns != ['']:  # if the leaders uun field in the settings is not empty
         try:

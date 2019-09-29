@@ -89,7 +89,7 @@ class App(QWidget):
             if self.settings_flag:
                 self.open_settings_click()
             try:
-                self.df = read_file(self.file_path_box.text(), self.leaders_uuns, self.sessions_to_drop)
+                self.df = read_file(self.file_path_box.text(), self.leaders_uuns, self.sessions_to_drop, self.sessions_to_merge)
                 if self.settings_flag is False:
                     self.mailing_list_button.show()
                     self.regulars_list_button.show()
@@ -108,6 +108,7 @@ class App(QWidget):
                 else:
                     self.open_settings()
             except:
+                print(sys.exc_info())  # temporary workaround, will make the error dialogs better later
                 self.file_error_dialog()
 
     def studypals_import_file(self):
@@ -345,6 +346,7 @@ class App(QWidget):
                 settings_file.write("\nStudyPALS_filepath = ")
                 settings_file.write("\nleaders_uuns = ")
                 settings_file.write("\nsessions_to_drop = ")
+                settings_file.write("\nsessions_to_merge = ")
 
             settings_file.close()
         except:
@@ -353,13 +355,14 @@ class App(QWidget):
     def initialise_settings(self):
         try:
             config = configparser.ConfigParser()
-            config.readfp(open(r'settings.txt'))
+            config.read_file(open(r'settings.txt'))
             settings_EconPALS_filepath = config.get('Defaults', 'EconPALS_filepath')
             settings_StudyPALS_filepath = config.get('Defaults', 'StudyPALS_filepath')
             self.default_EconPALS_filepath = settings_EconPALS_filepath
             self.default_StudyPALS_filepath = settings_StudyPALS_filepath
             self.leaders_uuns = config.get('Defaults', 'leaders_uuns').split(',')
             self.sessions_to_drop = config.get('Defaults', 'sessions_to_drop').split(',')
+            self.sessions_to_merge = config.get('Defaults', 'sessions_to_merge').split(',')
 
         except (configparser.NoSectionError, FileNotFoundError, configparser.MissingSectionHeaderError):
             self.write_to_settings()
