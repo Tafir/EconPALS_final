@@ -100,9 +100,9 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
                 return True
             elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
                 return True
-            elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
-                return True
             elif df.at[i, "S{}W{} Friday In-person".format(semester, week)] == 'P':
+                return True
+            elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
                 return True
             return False
         else:
@@ -114,9 +114,9 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
                         return True
                     elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
                         return True
-                    elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
-                        return True
                     elif df.at[i, "S{}W{} Friday In-person".format(semester, week)] == 'P':
+                        return True
+                    elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
                         return True
                 except KeyError:
                     print("Semester+Week combination not found")
