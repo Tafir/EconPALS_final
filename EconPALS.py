@@ -18,7 +18,6 @@ class App(QWidget):
         self.setWindowIcon(QtGui.QIcon('icon.png'))
         self.df = pd.DataFrame()
         self.settings_flag = False
-        self.StudyPALS_imported = False
         self.initialise_settings()
         self.initialise_ui()
 
@@ -59,20 +58,11 @@ class App(QWidget):
     def select_file(self):
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setNameFilters(["Excel files (*.xls)"])
+        dlg.setNameFilters(["Excel files (*.xlsx *.xls *.csv)"])
         if dlg.exec_():
             filenames = dlg.selectedFiles()
             if filenames:
                 self.file_path_box.setText(filenames[0])
-
-    def studypals_select_file(self):
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setNameFilters(["Excel files (*.xls)"])
-        if dlg.exec_():
-            filenames = dlg.selectedFiles()
-            if filenames:
-                self.StudyPALS_file_path_box.setText(filenames[0])
 
     @staticmethod
     def file_error_dialog():
@@ -102,39 +92,10 @@ class App(QWidget):
                     self.graph_button.show()
                     self.settings_button.show()
                     self.export_button.show()
-                    self.StudyPALS_file_path_box.show()
-                    self.lb_StudyPALS.show()
-                    self.StudyPALS_select_file_button.show()
                 else:
                     self.open_settings()
             except:
                 print(sys.exc_info())  # temporary workaround, will make the error dialogs better later
-                self.file_error_dialog()
-
-    def studypals_import_file(self):
-        if self.StudyPALS_imported:
-            self.import_file()
-        if self.StudyPALS_file_path_box.text() != '':
-            if self.settings_flag:
-                self.open_settings_click()
-            try:
-                self.df = studypals_read_file(self.StudyPALS_file_path_box.text(), self.df, self.leaders_uuns)
-                if self.settings_flag is False:
-                    self.mailing_list_button.show()
-                    self.regulars_list_button.show()
-                    self.get_attendance_button.show()
-                    self.cb_sem.show()
-                    self.cb_week.show()
-                    self.cb_reg.show()
-                    self.lb_sem.show()
-                    self.lb_week.show()
-                    self.graph_button.show()
-                    self.settings_button.show()
-                    self.export_button.show()
-                    self.StudyPALS_imported = True
-                else:
-                    self.open_settings()
-            except:
                 self.file_error_dialog()
 
     def graph_click(self):
@@ -184,7 +145,7 @@ class App(QWidget):
         i = 1
         attendance = attendance_count(self.df)
         for column in self.df.columns.values:
-            if 'w' in column:
+            if 'W' in column:
                 self.textEdit.insertPlainText(str(i) + ') ' + column + " --- " + str(attendance[i - 1][1]) + '\n')
                 i = i + 1
         self.number_of_sessions = i
@@ -343,7 +304,6 @@ class App(QWidget):
                 settings_file = open('settings.txt', 'w+')
                 settings_file.write('[Defaults]')
                 settings_file.write("\nEconPALS_filepath = ")
-                settings_file.write("\nStudyPALS_filepath = ")
                 settings_file.write("\nleaders_uuns = ")
                 settings_file.write("\nsessions_to_drop = ")
                 settings_file.write("\nsessions_to_merge = ")
@@ -357,9 +317,7 @@ class App(QWidget):
             config = configparser.ConfigParser()
             config.read_file(open(r'settings.txt'))
             settings_EconPALS_filepath = config.get('Defaults', 'EconPALS_filepath')
-            settings_StudyPALS_filepath = config.get('Defaults', 'StudyPALS_filepath')
             self.default_EconPALS_filepath = settings_EconPALS_filepath
-            self.default_StudyPALS_filepath = settings_StudyPALS_filepath
             self.leaders_uuns = config.get('Defaults', 'leaders_uuns').split(',')
             self.sessions_to_drop = config.get('Defaults', 'sessions_to_drop').split(',')
             self.sessions_to_merge = config.get('Defaults', 'sessions_to_merge').split(',')
@@ -406,63 +364,47 @@ class App(QWidget):
         self.select_file_button.clicked.connect(self.select_file)
         self.select_file_button.setGeometry(1100, 50, 50, 50)
 
-        self.lb_StudyPALS = QLabel(self)
-        self.lb_StudyPALS.setText('StudyPALS')
-        self.lb_StudyPALS.move(650, 115)
-        self.lb_StudyPALS.hide()
-
-        self.StudyPALS_file_path_box = QLineEdit(self)
-        self.StudyPALS_file_path_box.setGeometry(650, 150, 425, 50)
-        self.StudyPALS_file_path_box.setText(self.default_StudyPALS_filepath)
-        self.StudyPALS_file_path_box.returnPressed.connect(self.studypals_import_file)
-        self.StudyPALS_file_path_box.hide()
-
-        self.StudyPALS_select_file_button = QPushButton('...', self)
-        self.StudyPALS_select_file_button.clicked.connect(self.studypals_select_file)
-        self.StudyPALS_select_file_button.setGeometry(1100, 150, 50, 50)
-        self.StudyPALS_select_file_button.hide()
-
         #
         # ------------Initialise the main menu buttons, labels and combo boxes------------
         #
         self.mailing_list_button = QPushButton('Mailing list', self)
         self.mailing_list_button.clicked.connect(self.emails_button)
-        self.mailing_list_button.setGeometry(650, 250, 200, 50)
+        self.mailing_list_button.setGeometry(650, 150, 200, 50)
         self.mailing_list_button.hide()
 
         self.regulars_list_button = QPushButton('Regulars', self)
         self.regulars_list_button.clicked.connect(self.regulars_button)
-        self.regulars_list_button.setGeometry(650, 350, 200, 50)
+        self.regulars_list_button.setGeometry(650, 250, 200, 50)
         self.regulars_list_button.hide()
 
         self.get_attendance_button = QPushButton('Get attendance', self)
         self.get_attendance_button.clicked.connect(self.get_attendance_click)
-        self.get_attendance_button.setGeometry(650, 450, 200, 50)
+        self.get_attendance_button.setGeometry(650, 350, 200, 50)
         self.get_attendance_button.hide()
 
         self.lb_sem = QLabel(self)
         self.lb_sem.setText('Semester')
-        self.lb_sem.move(875, 215)
+        self.lb_sem.move(875, 135)
         self.lb_sem.hide()
 
         self.lb_week = QLabel(self)
         self.lb_week.setText('Week')
-        self.lb_week.move(1025, 215)
+        self.lb_week.move(1025, 135)
         self.lb_week.hide()
 
         self.cb_sem = QComboBox(self)
         self.cb_sem.addItems(['1', '2'])
-        self.cb_sem.setGeometry(875, 250, 125, 50)
+        self.cb_sem.setGeometry(875, 150, 125, 50)
         self.cb_sem.hide()
 
         self.cb_week = QComboBox(self)
         self.cb_week.addItems(['All', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
-        self.cb_week.setGeometry(1025, 250, 100, 50)
+        self.cb_week.setGeometry(1025, 150, 100, 50)
         self.cb_week.hide()
 
         self.cb_reg = QComboBox(self)
         self.cb_reg.addItems(['2', '3', '4', '5', '6', '7', '8', '9', '10'])
-        self.cb_reg.setGeometry(875, 350, 125, 50)
+        self.cb_reg.setGeometry(875, 250, 125, 50)
         self.cb_reg.hide()
 
         self.graph_button = QPushButton('Graph', self)

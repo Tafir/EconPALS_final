@@ -2,76 +2,6 @@ import pandas as pd
 import sys
 import numpy as np
 
-
-def rename_sessions(df, rename=False):
-    """
-    :param df: a data frame containing the exported data from TopHat
-    :param rename: boolean is true for when the function is called after original importing, e.g. when a new session is inserted
-    :return: returns a df with all the 'lectures' renamed to 'session' with proper week and day labels
-    """
-
-    # declare counters: i for weekdays, j for weeks, k for semesters
-    i = 1
-    j = 2
-    k = 1
-
-    if rename is False:
-        # replace "Lecture X" with more meaningful session names
-        for session in df.columns:
-            if 'Lecture' in session:
-                # check if a week has passed, if so, increase the week counter
-                if i == 5:
-
-                    i = 1
-                    j = j + 1
-
-                    if j == 11:
-                        j = 2
-                        k += 1
-
-                # declare a dictionary, assigning weekday strings to i values
-                weekdays = \
-                    {1: ('Tuesday s{}w{}'.format(k, j)),
-                     2: ('Wednesday s{}w{}'.format(k, j)),
-                     3: ('Thursday s{}w{}'.format(k, j)),
-                     4: ('Friday 1 s{}w{}'.format(k, j))}
-
-                # rename columns of the dataframe
-                df = df.rename(index=str, columns={session: weekdays.get(i)})
-
-                i += 1
-        return df
-
-    else:
-
-        #df.columns = df.columns.str.replace('Friday 23 s1w3',
-        #                                    'Friday 2 s1vv3')  # this is crap, drop it before release!!!
-        for session in df.columns:
-            if ('w' in session) and not ("Friday 2 " in session):
-                # check if a week has passed, if so, increase the week counter
-                if i == 5:
-
-                    i = 1
-                    j = j + 1
-
-                    if j == 11:  # check if the semester is over, if so, increase the semester counter
-                        j = 2
-                        k += 1
-
-                # declare a dictionary, assigning weekday strings to i values
-                weekdays = \
-                    {1: ('_Tuesday s{}w{}'.format(k, j)),
-                     2: ('_Wednesday s{}w{}'.format(k, j)),
-                     3: ('_Thursday s{}w{}'.format(k, j)),
-                     4: ('_Friday 1 s{}w{}'.format(k, j))}
-
-                # rename columns of the data frame
-                df = df.rename(index=str, columns={session: weekdays.get(i)})
-                i += 1
-
-        return df
-
-
 def drop_leaders_uuns(df, leaders_uuns):  # gets rid of double entries and leaders' emails
     """
     :param df: a data frame containing the exported data from TopHat, with lectures renamed
@@ -80,28 +10,35 @@ def drop_leaders_uuns(df, leaders_uuns):  # gets rid of double entries and leade
     """
 
     for i in df.index:
-        uun = df.at[i, 'Username'][1:8]
+        uun = df.at[i, 'Email'][1:8]
         if uun in leaders_uuns:
             df = df.drop(index=i)
     return df
 
 
-def correct_uuns(df):  # appends 'sms.' to UUN emails
+
+def correct_new_format(dataframe):
     """
 
-    :param df: a data frame containing the exported data from TopHat, with lectures renamed
-    :return: a data frame with corrected uni emails
+    :param dataframe: the data frame containing raw excel input
+    :return: a data frame containing a proper attendance sheet
     """
+    columns = [c for c in dataframe.columns if "weight" not in c.lower()]
+    df_clean = dataframe[columns]
 
-    for i in df.index:
-        email = df.at[i, 'Username']
-        # check if it's a uni email, add 'sms.'
-        if '@ed.ac.uk' in email:
-            email_parts = email.split('@')
-            email_parts[1] = '@sms.ed.ac.uk'
-            email = ''.join(email_parts)
-            df.at[i, 'Username'] = email
-    return df
+    attendance_columns = columns[7:]
+    df_attendance = pd.DataFrame()
+    for column in df_clean:
+        if column in attendance_columns:
+            df_attendance[column] = pd.to_numeric(df_clean[column], errors="coerce")
+
+    # Not the cleanest way, rewrite later
+    df_attendance[df_attendance>0] = "P"
+    df_attendance = df_attendance.fillna("A")
+    df_clean[attendance_columns] = df_attendance
+
+    df_clean = df_clean.drop(df_clean[df_clean['Student Name']=='Class Average'].index)
+    return df_clean
 
 
 def read_file(filename, leaders_uuns=[''], columns_to_drop=[''], columns_to_merge=['']):  # creates a corrected and sorted data frame
@@ -113,7 +50,12 @@ def read_file(filename, leaders_uuns=[''], columns_to_drop=[''], columns_to_merg
     :return: a data frame of the exported data
     """
 
-    df = pd.read_excel(io=filename, sheet_name='Attendance')
+    if ".csv" in filename:
+        df_raw = pd.read_csv(filename)
+    else:
+        df_raw = pd.read_excel(io=filename)
+
+    df = correct_new_format(df_raw)
 
     if columns_to_drop != ['']:  # if there is a column to drop
         try:
@@ -135,48 +77,10 @@ def read_file(filename, leaders_uuns=[''], columns_to_drop=[''], columns_to_merg
             df = drop_leaders_uuns(df, leaders_uuns)
         except:
             print("Drop leaders UUNS failed. Ignore if you are importing a formatted file")
-            print(e=sys.exc_info())
+            print(sys.exc_info())
 
-    df = df.sort_values(by='Username')
-    df = rename_sessions(df)
+    df = df.sort_values(by='Email')
 
-    df = correct_uuns(df)
-    return df
-
-
-def studypals_read_file(filename, df, leaders_uuns):  # imports a StudyPALS excel file
-    """
-    :param filename: a string containing the file path to the StudyPALS (EconPALS1) TopHat export
-    :param df: a data frame with the EconPALS TopHat data
-    :param leaders_uuns: a list containing leaders' uuns, which are to be excluded from the data frame
-    :return: a data frame of the exported data with the StudyPALS(EconPALS1) data appended to it
-    """
-
-    week = 2
-    semester = 1
-    temp_df = pd.read_excel(io=filename, sheet_name='Attendance')
-    temp_df = temp_df.sort_values(by='Username')
-    for session in temp_df.columns:
-        if "Lecture" in session:
-            if week == 11 and semester == 1:
-                semester = 2
-                week = 2
-            temp_df = temp_df.rename(index=str, columns={session: 'Friday 2 s{}w{}'.format(semester, week)})
-            week += 1
-    for i in temp_df.index:
-        uun = temp_df.at[i, 'Username'][1:8]
-        if uun in leaders_uuns:
-            temp_df = temp_df.drop(index=i)
-    temp_df = temp_df.drop(
-        columns=['Student ID', 'Email Address', 'First Name', 'Last Name', 'Attended', 'Excused', 'Absent'])
-    temp_df = temp_df.rename(index=str, columns={'Username': 'Username_temp'})
-    df = pd.concat([df, temp_df], axis=1, sort=False)
-    df = df.fillna('A')
-    for i in df.index:
-        if df.at[i, 'Username'] == 'A' and df.at[i, 'Username_temp'] != 'A':
-            df.at[i, 'Username'] = df.at[i, 'Username_temp']
-    df = df.drop(columns=['Username_temp'])
-    df = update_attendance(df)
     return df
 
 
@@ -188,29 +92,42 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
     :param semester: integer, semester label of the sessions being looked up
     :return: boolean, True if person i attended a session in a given week
     """
-
-    if week != 0:
-        if df.at[i, "Tuesday s{}w{}".format(semester, week)] == 'P':
-            return True
-        elif df.at[i, "Wednesday s{}w{}".format(semester, week)] == 'P':
-            return True
-        elif df.at[i, "Thursday s{}w{}".format(semester, week)] == 'P':
-            return True
-        elif df.at[i, "Friday 1 s{}w{}".format(semester, week)] == 'P':
-            return True
-        else:
+    try:
+        if week != 0:   
+            if df.at[i, "S{}W{} Tuesday".format(semester, week)] == 'P':
+                return True
+            elif df.at[i, "S{}W{} Wednesday".format(semester, week)] == 'P':
+                return True
+            elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
+                return True
+            elif df.at[i, "S{}W{} Friday AM".format(semester, week)] == 'P':
+                return True
+            elif df.at[i, "S{}W{} Friday PM".format(semester, week)] == 'P':
+                return True
             return False
-    else:
-        for week in range(2, 11):
-            if df.at[i, "Tuesday s{}w{}".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "Wednesday s{}w{}".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "Thursday s{}w{}".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "Friday 1 s{}w{}".format(semester, week)] == 'P':
-                return True
+        else:
+            for week in range(2, 11):
+                try:
+                    if df.at[i, "S{}W{} Tuesday".format(semester, week)] == 'P':
+                        return True
+                    elif df.at[i, "S{}W{} Wednesday".format(semester, week)] == 'P':
+                        return True
+                    elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
+                        return True
+                    elif df.at[i, "S{}W{} Friday AM".format(semester, week)] == 'P':
+                        return True
+                    elif df.at[i, "S{}W{} Friday PM".format(semester, week)] == 'P':
+                        return True
+                except KeyError:
+                    print("Semester+Week combination not found")
+                    print(sys.exc_info())
+                    continue
+                return False
+    except:
+        print("An error has occured during attendance checking")
+        print(sys.exc_info())
         return False
+
 
 
 def get_emails(df, week=0, semester=1, to_file=False):  # produces a file with a mailing list with every attendee ever
@@ -230,29 +147,24 @@ def get_emails(df, week=0, semester=1, to_file=False):  # produces a file with a
             text_file = open('mailing_list.txt', 'w')
             for i in df.index:
                 if attendance_check(df, i, week, semester):
-                    text_file.write(df.at[i, 'Username'])
+                    text_file.write(df.at[i, 'Email'])
                     text_file.write('\n')
-                    emails += df.at[i, 'Username'] + '\n'
+                    emails += df.at[i, 'Email'] + '\n'
             text_file.close()
         else:
             text_file = open(('mailing_list_s{]w{}.txt'.format(semester, week)), 'w')
             for i in df.index:
                 if attendance_check(df, i, week, semester):  # for a particular week
-                    text_file.write(df.at[i, 'Username'])
+                    text_file.write(df.at[i, 'Email'])
                     text_file.write('\n')
-                    emails += df.at[i, 'Username'] + '\n'
+                    emails += df.at[i, 'Email'] + '\n'
             text_file.close()
 
     # just creating a string with all the emails
     else:
-        if week == 0:  # for all weeks
-            for i in df.index:
-                if attendance_check(df, i, week, semester):
-                    emails += df.at[i, 'Username'] + '\n'
-        else:
-            for i in df.index:
-                if attendance_check(df, i, week, semester):  # for a particular week
-                    emails += df.at[i, 'Username'] + '\n'
+        for i in df.index:
+            if attendance_check(df, i, week, semester):  # for a particular week
+                emails += df.at[i, 'Email'] + '\n'
     return emails
 
 
@@ -268,15 +180,19 @@ def regulars_list(df, number_of_sessions, to_file=False):
     if to_file:
         text_file = open('regulars_list.txt', 'w')
         for i in df.index:
-            if df.at[i, 'Attended'] > number_of_sessions:
-                text_file.write(df.at[i, 'Username'])
+            if df.at[i, 'Attendance'] > number_of_sessions:
+                text_file.write(df.at[i, 'Email'])
                 text_file.write('\n')
-                regulars += df.at[i, 'Username'] + '\n'
+                regulars += df.at[i, 'Email'] + '\n'
         text_file.close()
     else:
         for i in df.index:
-            if df.at[i, 'Attended'] > number_of_sessions:
-                regulars += df.at[i, 'Username'] + '\n'
+            sessions_attended = df.at[i, 'Attendance']
+            try:
+                if int(df.at[i, 'Attendance']) >= number_of_sessions:
+                    regulars += df.at[i, 'Email'] + '\n'
+            except:
+                pass
     return regulars
 
 
@@ -336,11 +252,11 @@ def get_attendance(df, email):
     if "@" not in email and email[0] == 's':
         email += "@sms.ed.ac.uk"
 
-    if any(df['Username'].isin([email])):
+    if any(df['Email'].isin([email])):
         counter = 0
 
         # generates a 1 row df with only the person's attendance data in it
-        temp_df = df[df["Username"] == email]
+        temp_df = df[df["Email"] == email]
 
         for session in temp_df:
             if temp_df[session].values[0] == 'P':
@@ -348,7 +264,7 @@ def get_attendance(df, email):
                 attendance_string += session + "\n"
         return "{} attended a total of {} sessions: \n{}".format(email, counter, attendance_string)
     else:
-        return "Invalid username entered"
+        return "Invalid Email entered"
 
 
 if __name__ == "__main__":
