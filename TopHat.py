@@ -38,6 +38,8 @@ def correct_new_format(dataframe):
     df_clean[attendance_columns] = df_attendance
 
     df_clean = df_clean.drop(df_clean[df_clean['Student Name']=='Class Average'].index)
+    # FIXME: This is to overcome some indexing issues for attendance checking. There must be a neater way
+    df_clean = df_clean.reset_index()
     return df_clean
 
 
@@ -92,39 +94,20 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
     :param semester: integer, semester label of the sessions being looked up
     :return: boolean, True if person i attended a session in a given week
     """
-
-    # FIXME: This elif situation is crap. If a session is missing, this will throw and not check other sessions that week
     try:
-        if week != 0:   
-            if df.at[i, "S{}W{} Tuesday".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "S{}W{} Wednesday".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "S{}W{} Friday In-person".format(semester, week)] == 'P':
-                return True
-            elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
-                return True
-            return False
-        else:
-            for week in range(2, 11):
-                try:
-                    if df.at[i, "S{}W{} Tuesday".format(semester, week)] == 'P':
-                        return True
-                    elif df.at[i, "S{}W{} Wednesday".format(semester, week)] == 'P':
-                        return True
-                    elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
-                        return True
-                    elif df.at[i, "S{}W{} Friday In-person".format(semester, week)] == 'P':
-                        return True
-                    elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
-                        return True
-                except KeyError:
-                    print("Semester+Week combination not found")
-                    print(sys.exc_info())
-                    continue
-                return False
+        if week == 0:
+            # FIXME: This is ugly. Probably pass week as empty string by default?
+            week = ''
+ 
+        # Get all columns for this person
+        row = df.iloc[i]
+
+        # Separate attendance related columns for a given semester-week combination. If week=0, pull entire semester
+        attendance_columns = [column for column in row.index if f"S{semester}W{week}" in column]
+
+        # Check if value of any of the attendance columns is equal to P
+        return row[attendance_columns].isin(['P']).any()
+
     except:
         print("An error has occured during attendance checking")
         print(sys.exc_info())
