@@ -92,6 +92,8 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
     :param semester: integer, semester label of the sessions being looked up
     :return: boolean, True if person i attended a session in a given week
     """
+
+    # FIXME: This elif situation is crap. If a session is missing, this will throw and not check other sessions that week
     try:
         if week != 0:   
             if df.at[i, "S{}W{} Tuesday".format(semester, week)] == 'P':
