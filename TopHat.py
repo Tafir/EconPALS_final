@@ -33,7 +33,7 @@ def correct_new_format(dataframe):
             df_attendance[column] = pd.to_numeric(df_clean[column], errors="coerce")
 
     # Not the cleanest way, rewrite later
-    df_attendance[df_attendance>0] = "P"
+    df_attendance[df_attendance>=0] = "P"
     df_attendance = df_attendance.fillna("A")
     df_clean[attendance_columns] = df_attendance
 
@@ -100,9 +100,9 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
                 return True
             elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
                 return True
-            elif df.at[i, "S{}W{} Friday AM".format(semester, week)] == 'P':
+            elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
                 return True
-            elif df.at[i, "S{}W{} Friday PM".format(semester, week)] == 'P':
+            elif df.at[i, "S{}W{} Friday In-person".format(semester, week)] == 'P':
                 return True
             return False
         else:
@@ -114,9 +114,9 @@ def attendance_check(df, i, week, semester):  # checks whether a person i attend
                         return True
                     elif df.at[i, "S{}W{} Thursday".format(semester, week)] == 'P':
                         return True
-                    elif df.at[i, "S{}W{} Friday AM".format(semester, week)] == 'P':
+                    elif df.at[i, "S{}W{} Friday Online".format(semester, week)] == 'P':
                         return True
-                    elif df.at[i, "S{}W{} Friday PM".format(semester, week)] == 'P':
+                    elif df.at[i, "S{}W{} Friday In-person".format(semester, week)] == 'P':
                         return True
                 except KeyError:
                     print("Semester+Week combination not found")
@@ -152,7 +152,7 @@ def get_emails(df, week=0, semester=1, to_file=False):  # produces a file with a
                     emails += df.at[i, 'Email'] + '\n'
             text_file.close()
         else:
-            text_file = open(('mailing_list_s{]w{}.txt'.format(semester, week)), 'w')
+            text_file = open(('mailing_list_s{}w{}.txt'.format(semester, week)), 'w')
             for i in df.index:
                 if attendance_check(df, i, week, semester):  # for a particular week
                     text_file.write(df.at[i, 'Email'])
